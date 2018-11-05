@@ -2,7 +2,7 @@
 
 if ( !Boolean($) ) throw new Exception("Global Utilities Javascript need jQuery to work");
 
-const MSTR = {};
+const JSH = {};
 
 // Polyfill for olds browsers
 if ( !String.prototype.format ) {
@@ -23,7 +23,7 @@ if( !Array.isArray ) {
 }
 
 // Random token generation
-MSTR.randomToken = function( length ) {
+JSH.randomToken = function( length ) {
 
 	if ( typeof( length ) !== "number" ) length = 32;
 	abc = "abcdefghijklmnopqrstuvwxyz1234567890".split("");
@@ -36,20 +36,20 @@ MSTR.randomToken = function( length ) {
 };
 
 // Utils
-MSTR.changeUrl = function( newUrl, title ) {
+JSH.changeUrl = function( newUrl, title ) {
 	if ( typeof( title ) !== "string" ) title = "";
 	window.history.pushState( "", title, newUrl );
 };
 
-MSTR.getLocation = function() {
+JSH.getLocation = function() {
 	return document.location.href;
 };
 
-MSTR.setLocation = function( url ) {
+JSH.setLocation = function( url ) {
 	document.location.href = url;
 };
 
-MSTR.setLocationPost = function( url, args ) {
+JSH.setLocationPost = function( url, args ) {
 	let formContent = "";
     $.each( args, function( key, value ) {
         value = value.split("\"").join("\\\"");
@@ -60,27 +60,27 @@ MSTR.setLocationPost = function( url, args ) {
 	form.appendTo( $( document.body ) ).submit();
 };
 
-MSTR.reloadLocation = function() {
+JSH.reloadLocation = function() {
 	document.location.reload();
 };
 
-MSTR.validateEmail = function( email ) {
+JSH.validateEmail = function( email ) {
   var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test( email );
 };
 
-MSTR.getCurrentTimeMillis = function() {
+JSH.getCurrentTimeMillis = function() {
 	return new Date().getTime();
 };
 
-MSTR.getCurrentTimeSeconds = function() {
+JSH.getCurrentTimeSeconds = function() {
 	return new Date().getTime() / 1000;
 };
 
 // URL Manipulation
-MSTR.url = {};
+JSH.url = {};
 
-MSTR.url.getParam = function( url, param ) {
+JSH.url.getParam = function( url, param ) {
 	let results = new RegExp('[\?&]' + param + '=([^&#]*)').exec( url );
 	if ( results == null ) {
 		return null;
@@ -89,7 +89,7 @@ MSTR.url.getParam = function( url, param ) {
 	}
 };
 
-MSTR.url.removeParam = function( url, param ) {
+JSH.url.removeParam = function( url, param ) {
 	let urlparts = url.split("?");
 	if ( urlparts.length >= 2 ) {
 		let urlBase = urlparts.shift();
@@ -104,7 +104,7 @@ MSTR.url.removeParam = function( url, param ) {
 	return url;
 };
 
-MSTR.url.setParam = function( url, param, value ) {
+JSH.url.setParam = function( url, param, value ) {
 	var pattern = new RegExp( '(' + param + '=).*?(&|$)' );
 	var newUrl = url.replace( pattern, '$1' + value + '$2' );
 	var n = url.indexOf( param );
@@ -114,7 +114,7 @@ MSTR.url.setParam = function( url, param, value ) {
 	return newUrl;
 };
 
-MSTR.url.addParam = function( url, param, value ) {
+JSH.url.addParam = function( url, param, value ) {
 	param = encodeURIComponent( param );
 	var r = "([&?]|&amp;)" + param + "\\b(?:=(?:[^&#]*))*";
 	var a = document.createElement('a');
@@ -131,43 +131,43 @@ MSTR.url.addParam = function( url, param, value ) {
 };
 
 // Virtual Form
-MSTR.form = {};
+JSH.form = {};
 
-MSTR.form.list = {};
-MSTR.form.customFields = {};
+JSH.form.list = {};
+JSH.form.customFields = {};
 
-MSTR.form.registerCustomField = function( identifier, selector, valueFunction ) {
+JSH.form.registerCustomField = function( identifier, selector, valueFunction ) {
 
 	if ( typeof selector !== "string" ) throw "Invalid selector";
 	if ( typeof valueFunction !== "function" ) throw "Invalid value function";
 
-	MSTR.form.customFields[ identifier ] = {
+	JSH.form.customFields[ identifier ] = {
 		"selector": selector,
 		"value_function": valueFunction
 	};
 
 };
 
-MSTR.form.registerCustomField( "std-input", "input", function( elt ) {
+JSH.form.registerCustomField( "std-input", "input", function( elt ) {
 	let $elt = $( elt );
 	return $elt.is("[type='checkbox'], [type='radio']") ? $elt.prop("checked") : elt.value;
 } );
 
-MSTR.form.registerCustomField( "std-textarea", "textarea", function( elt ) {
+JSH.form.registerCustomField( "std-textarea", "textarea", function( elt ) {
 	return elt.value;
 } );
 
-MSTR.form.registerCustomField( "std-select", "select", function( elt ) {
+JSH.form.registerCustomField( "std-select", "select", function( elt ) {
 	return elt.value;
 } );
 
-MSTR.form.getElementValue = function( elt ) {
+JSH.form.getElementValue = function( elt ) {
 
 	$elt = $( elt );
 
-	for ( let identifier in MSTR.form.customFields ) {
+	for ( let identifier in JSH.form.customFields ) {
 
-		let customFieldData = MSTR.form.customFields[ identifier ];
+		let customFieldData = JSH.form.customFields[ identifier ];
 
 		if ( $elt.is( customFieldData["selector"] ) ) {
 			return customFieldData["value_function"]( elt );
@@ -179,7 +179,7 @@ MSTR.form.getElementValue = function( elt ) {
 
 };
 
-MSTR.form.collect = function( form ) {
+JSH.form.collect = function( form ) {
 
 	let rawFormNamespace = form + ":";
 
@@ -187,9 +187,9 @@ MSTR.form.collect = function( form ) {
 	let selector = "";
 
 	let i = true;
-	for ( let identifier in MSTR.form.customFields ) {
+	for ( let identifier in JSH.form.customFields ) {
 
-		let customFieldData = MSTR.form.customFields[ identifier ];
+		let customFieldData = JSH.form.customFields[ identifier ];
 
 		selector +=
 			( i ? "" : "," ) + customFieldData["selector"] + "[name^='" + rawFormNamespace + "']" +
@@ -219,7 +219,7 @@ MSTR.form.collect = function( form ) {
 
 		if ( name === undefined || name == "" ) return;
 
-		values[ name ] = MSTR.form.getElementValue( this );
+		values[ name ] = JSH.form.getElementValue( this );
 
 	} );
 
@@ -227,21 +227,21 @@ MSTR.form.collect = function( form ) {
 
 };
 
-MSTR.form.postQuery = function( form, queryname, fn ) {
+JSH.form.postQuery = function( form, queryname, fn ) {
 
-	let params = MSTR.form.collect( form );
+	let params = JSH.form.collect( form );
 
-	MSTR.query.post( queryname, params, fn );
+	JSH.query.post( queryname, params, fn );
 
 };
 
-MSTR.form.getFormData = function( form ) {
+JSH.form.getFormData = function( form ) {
 
-	let formData = MSTR.form.list[ form ];
+	let formData = JSH.form.list[ form ];
 
 	if ( formData === undefined ) {
 
-		MSTR.form.list[ form ] = formData = {
+		JSH.form.list[ form ] = formData = {
 			"valid": false,
 			"fields": {},
 			"submit_action": null,
@@ -262,15 +262,15 @@ MSTR.form.getFormData = function( form ) {
 
 };
 
-MSTR.form.getFieldData = function( form, field ) {
+JSH.form.getFieldData = function( form, field ) {
 
 	// let selector = "input[name='" + form + ":" + field + "'], input[data-form='" + form + "'][data-field='" + field + "']";
 	let selector = "";
 
 	let i = true;
-	for ( let identifier in MSTR.form.customFields ) {
+	for ( let identifier in JSH.form.customFields ) {
 
-		let customFieldData = MSTR.form.customFields[ identifier ];
+		let customFieldData = JSH.form.customFields[ identifier ];
 
 		selector +=
 			( i ? "" : "," ) + customFieldData["selector"] + "[name='" + form + ":" + field + "']" +
@@ -283,7 +283,7 @@ MSTR.form.getFieldData = function( form, field ) {
 	let elt = document.querySelector( selector );
 	if ( elt === null ) return null;
 
-	let formData = MSTR.form.getFormData( form );
+	let formData = JSH.form.getFormData( form );
 
 	let formFields = formData["fields"];
 
@@ -305,18 +305,18 @@ MSTR.form.getFieldData = function( form, field ) {
 
 };
 
-MSTR.form.getField = function( form, field ) {
-	let data = MSTR.form.getFieldData( form, field );
+JSH.form.getField = function( form, field ) {
+	let data = JSH.form.getFieldData( form, field );
 	return data === null ? null : data["element"];
 };
 
-MSTR.form.getFormSubmits = function( form ) {
+JSH.form.getFormSubmits = function( form ) {
 	return document.querySelectorAll("[data-form-submit='" + form + "']");
 };
 
-MSTR.form.setFormSubmitAction = function( form, cb ) {
+JSH.form.setFormSubmitAction = function( form, cb ) {
 
-	let formData = MSTR.form.getFormData( form );
+	let formData = JSH.form.getFormData( form );
 
 	if ( formData["submit_elements"].length !== 0 ) {
 
@@ -325,19 +325,19 @@ MSTR.form.setFormSubmitAction = function( form, cb ) {
 	}
 
 	formData["submit_action"] = cb;
-	formData["submit_elements"] = MSTR.form.getFormSubmits( form );
+	formData["submit_elements"] = JSH.form.getFormSubmits( form );
 
 	formData["submit_elements"].forEach( e => e.addEventListener( 'click', cb ) );
 
 };
 
-MSTR.form.addEnterKeyListener = function( form, fields ) {
+JSH.form.addEnterKeyListener = function( form, fields ) {
 
 	if ( !Array.isArray( fields ) ) {
 		fields = [ fields ];
 	}
 
-	let formData = MSTR.form.getFormData( form );
+	let formData = JSH.form.getFormData( form );
 
 	$.each( fields, function( idx, field ) {
 
@@ -352,13 +352,13 @@ MSTR.form.addEnterKeyListener = function( form, fields ) {
 
 };
 
-MSTR.form.removeEnterKeyListener = function( form, fields ) {
+JSH.form.removeEnterKeyListener = function( form, fields ) {
 
 	if ( !Array.isArray( fields ) ) {
 		fields = [ fields ];
 	}
 
-	let formData = MSTR.form.getFormData( form );
+	let formData = JSH.form.getFormData( form );
 
 	$.each( fields, function( idx, field ) {
 
@@ -373,9 +373,9 @@ MSTR.form.removeEnterKeyListener = function( form, fields ) {
 
 };
 
-MSTR.form.clearEnterKeyListeners = function( form ) {
+JSH.form.clearEnterKeyListeners = function( form ) {
 
-	let formData = MSTR.form.getFormData( form );
+	let formData = JSH.form.getFormData( form );
 
 	$.each( formData["fields"], function( fieldName, fieldData ) {
 
@@ -389,12 +389,12 @@ MSTR.form.clearEnterKeyListeners = function( form ) {
 
 };
 
-MSTR.form.addChecker = function( form, field, checker, index ) {
+JSH.form.addChecker = function( form, field, checker, index ) {
 
 	if ( typeof checker !== "function" )
 		throw "Invalid checker function";
 
-	let fieldData = MSTR.form.getFieldData( form, field );
+	let fieldData = JSH.form.getFieldData( form, field );
 	if ( fieldData === null ) return;
 
 	if ( Array.isArray( checker.subfields ) ) {
@@ -405,10 +405,10 @@ MSTR.form.addChecker = function( form, field, checker, index ) {
 
 			if ( fieldSubfields[ subfield ] === undefined ) {
 
-				let fieldElt = MSTR.form.getField( form, subfield );
+				let fieldElt = JSH.form.getField( form, subfield );
 
 				fieldSubfields[ subfield ] = function() {
-					MSTR.form.processCheck( form, field );
+					JSH.form.processCheck( form, field );
 				};
 
 				fieldElt.addEventListener( 'keyup', fieldSubfields[ subfield ] );
@@ -437,20 +437,20 @@ MSTR.form.addChecker = function( form, field, checker, index ) {
 	if ( checkers.length === 1 ) {
 
 		fieldData["event"] = function() {
-			MSTR.form.processCheck( form, field );
+			JSH.form.processCheck( form, field );
 		};
 
 		fieldData["element"].addEventListener( 'keyup', fieldData["event"] );
 
 	}
 
-	MSTR.form.processCheck( form, field );
+	JSH.form.processCheck( form, field );
 
 };
 
-MSTR.form.clearCheckers = function( form, field ) {
+JSH.form.clearCheckers = function( form, field ) {
 
-	let fieldData = MSTR.form.getFieldData( form, field );
+	let fieldData = JSH.form.getFieldData( form, field );
 	if ( fieldData === null ) return;
 
 	fieldData["element"].removeEventListener( "keyup", fieldData["event"] );
@@ -461,20 +461,20 @@ MSTR.form.clearCheckers = function( form, field ) {
 
 	$.each( subfields, function( subfield, listener ) {
 
-		MSTR.form.getFieldData( form, subfield )["element"].removeEventListener( "keyup", listener );
+		JSH.form.getFieldData( form, subfield )["element"].removeEventListener( "keyup", listener );
 
 	} );
 
 	fieldData["subfields"] = {};
 	fieldData["checkers"] = [];
 
-	MSTR.form.processCheck( form, field );
+	JSH.form.processCheck( form, field );
 
 };
 
-MSTR.form.processCheck = function( form, field ) {
+JSH.form.processCheck = function( form, field ) {
 
-	let formData = MSTR.form.list[ form ];
+	let formData = JSH.form.list[ form ];
 	if ( formData === undefined ) return;
 
 	let formFields = formData["fields"];
@@ -485,7 +485,7 @@ MSTR.form.processCheck = function( form, field ) {
 		let fieldCheckers = fieldObj["checkers"];
 
 		let fieldElt = fieldObj["element"];
-		let fieldValue = MSTR.form.getElementValue( fieldElt );
+		let fieldValue = JSH.form.getElementValue( fieldElt );
 
 		$.each( fieldCheckers, function( idx, checker ) {
 
@@ -535,33 +535,33 @@ MSTR.form.processCheck = function( form, field ) {
 
 	}
 
-	$( MSTR.form.getFormSubmits( form ) ).each( function() {
+	$( JSH.form.getFormSubmits( form ) ).each( function() {
 		$( this ).prop( "disabled", !formData["valid"] );
 	} );
 
 };
 
-MSTR.form.addCheckerSubFields = function( fn, subfields ) {
+JSH.form.addCheckerSubFields = function( fn, subfields ) {
 	fn.subfields = subfields;
 	return fn;
 };
 
-MSTR.form.VALID_EMAIL_CHECKER = function( elt, val ) {
-	return MSTR.validateEmail( val ) ? false : "invalid_email";
+JSH.form.VALID_EMAIL_CHECKER = function( elt, val ) {
+	return JSH.validateEmail( val ) ? false : "invalid_email";
 };
 
-MSTR.form.NOT_EMPTY_CHECKER = function( elt, val ) {
+JSH.form.NOT_EMPTY_CHECKER = function( elt, val ) {
 	return val.length === 0 ? "empty" : false;
 };
 
-MSTR.form.createRegexChecker = function( regex ) {
+JSH.form.createRegexChecker = function( regex ) {
 	if ( regex === undefined ) return null;
 	return function( elt, val ) {
 		return regex.test( val ) ? false : "regex_not_correspond";
 	};
 };
 
-MSTR.form.createLengthChecker = function( min, max ) {
+JSH.form.createLengthChecker = function( min, max ) {
 	if ( min === undefined && max === undefined ) return null;
 	return function( elt, val ) {
 		if ( typeof val !== "string" ) return false;
@@ -572,26 +572,26 @@ MSTR.form.createLengthChecker = function( min, max ) {
 	};
 };
 
-MSTR.form.createConfirmPasswordChecker = function( referencePasswordField ) {
+JSH.form.createConfirmPasswordChecker = function( referencePasswordField ) {
 	if ( referencePasswordField === undefined ) return null;
-	return MSTR.form.addCheckerSubFields( function( elt, val, form, field ) {
+	return JSH.form.addCheckerSubFields( function( elt, val, form, field ) {
 
 		if ( typeof val !== "string" ) return false;
 		if ( field === referencePasswordField ) return false;
-		let referenceField = MSTR.form.getField( form, referencePasswordField );
-		return val === MSTR.form.getElementValue( referenceField ) ? false : "invalid_confirm_password";
+		let referenceField = JSH.form.getField( form, referencePasswordField );
+		return val === JSH.form.getElementValue( referenceField ) ? false : "invalid_confirm_password";
 
 	}, [ referencePasswordField ] );
 };
 
 // Query
-MSTR.query = {};
+JSH.query = {};
 
-MSTR.query.path = "/query/{0}";
+JSH.query.path = "/query/{0}";
 
-MSTR.query.post = function( name, params, fn ) {
+JSH.query.post = function( name, params, fn ) {
 
-	let path = MSTR.query.path.format( name );
+	let path = JSH.query.path.format( name );
 
 	let formdata = new FormData();
 	let val;
@@ -632,12 +632,12 @@ MSTR.query.post = function( name, params, fn ) {
 };
 
 // Language
-MSTR.lang = {};
-MSTR.lang.content = {};
+JSH.lang = {};
+JSH.lang.content = {};
 
-MSTR.lang.get = function( key, vars ) {
+JSH.lang.get = function( key, vars ) {
 
-	let raw = MSTR.lang.content[ key ];
+	let raw = JSH.lang.content[ key ];
 	if ( raw === undefined ) return key;
 	return raw.format( vars );
 
