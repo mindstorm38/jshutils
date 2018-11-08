@@ -77,6 +77,10 @@ JSH.getCurrentTimeSeconds = function() {
 	return new Date().getTime() / 1000;
 };
 
+JSH.getRandomInt = function( max ) {
+	return Math.floor( Math.random() * Math.floor( max ) );
+};
+
 // URL Manipulation
 JSH.url = {};
 
@@ -582,6 +586,39 @@ JSH.form.createConfirmPasswordChecker = function( referencePasswordField ) {
 		return val === JSH.form.getElementValue( referenceField ) ? false : "invalid_confirm_password";
 
 	}, [ referencePasswordField ] );
+};
+
+// Events utilities
+JSH.event = {};
+
+JSH.event.timeouts = {};
+
+JSH.event.timeShiftedEvent = function( event, delay ) {
+
+	let id = JSH.randomToken();
+	if ( typeof delay !== 'number' ) delay = 300;
+
+	return function() {
+
+		if ( JSH.event.timeouts[ id ] !== undefined ) {
+
+			clearTimeout( JSH.event.timeouts[ id ] );
+			delete JSH.event.timeouts[ id ];
+
+		}
+
+		let args = arguments;
+		let self = this;
+
+		JSH.event.timeouts[ id ] = setTimeout( () => {
+
+			delete JSH.event.timeouts[ id ];
+			event.apply( self, arguments );
+
+		}, delay );
+
+	};
+
 };
 
 // Query
