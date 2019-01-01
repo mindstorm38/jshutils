@@ -37,7 +37,7 @@ JSH.randomToken = function( length ) {
 
 // Utils
 JSH.changeUrl = function( newUrl, title ) {
-	if ( typeof( title ) !== "string" ) title = "";
+	if ( typeof title !== "string" ) title = "";
 	window.history.pushState( "", title, newUrl );
 };
 
@@ -78,6 +78,7 @@ JSH.getCurrentTimeSeconds = function() {
 };
 
 JSH.getRandomInt = function( max ) {
+	if ( typeof max !== "number" ) max = 1000000;
 	return Math.floor( Math.random() * Math.floor( max ) );
 };
 
@@ -589,36 +590,331 @@ JSH.form.createConfirmPasswordChecker = function( referencePasswordField ) {
 };
 
 // Events utilities
-JSH.event = {};
-
-JSH.event.timeouts = {};
+JSH.event = {
+	timeouts: {}
+};
 
 JSH.event.timeShiftedEvent = function( event, delay ) {
-
-	let id = JSH.randomToken();
+	
+	let id = JSH.getRandomInt();
 	if ( typeof delay !== 'number' ) delay = 300;
-
+	
 	return function() {
-
+		
 		if ( JSH.event.timeouts[ id ] !== undefined ) {
-
+			
 			clearTimeout( JSH.event.timeouts[ id ] );
 			delete JSH.event.timeouts[ id ];
-
+			
 		}
-
+		
 		let args = arguments;
 		let self = this;
-
+		
 		JSH.event.timeouts[ id ] = setTimeout( () => {
-
+			
 			delete JSH.event.timeouts[ id ];
 			event.apply( self, arguments );
-
+			
 		}, delay );
-
+			
 	};
+	
+};
 
+// Pagination utilities
+JSH.pagination = {
+	systems: {}
+};
+
+JSH.pagination.newSystem = function( paginationContainer, initialPage ) {
+	
+	let id = JSH.getRandomInt();
+	if ( JSH.pagination.systems[ id ] ) return null;
+	
+	let system = JSH.pagination.systems[ id ] = {
+		id: id,
+		container: paginationContainer,
+		listeners: [],
+		buttons: {},
+		page: 0,
+		minPage: 0,
+		maxPage: 0,
+		addListener: function( callback ) {
+			
+			if ( typeof callback !== "function" )
+				throw "Invalid callback, must be a function";
+			
+			this.listeners.push( callback );
+			
+		},
+		triggerListeners: function( page ) {
+			
+			if ( typeof page !== "number" ) page = system.page;
+			
+			let valid = true;
+			
+			this.listeners.forEach( function( listener ) {
+				
+				if( !listener( page ) )
+					valid = false;
+				
+			} );
+			
+			return valid;
+			
+		},
+		updateRenderers: function() {
+			
+			$.each( this.buttons, function( buttonId, button ) {
+				button.updateRenderer();
+			} );
+			
+		},
+		setMinPage: function( minPage ) {
+			
+			if ( minPage > this.maxPage )
+				throw "Minimum page can't be greater than current maximum page";
+			
+			this.minPage = minPage;
+			this.updateRenderers();
+			
+		},
+		setMaxPage: function( maxPage ) {
+			
+			if ( maxPage < this.minPage )
+				throw "Maximum page can't be smaller than current minimum page";
+			
+			this.maxPage = maxPage;
+			this.updateRenderers();
+			
+		},
+		setPage: function( page ) {
+			
+			if ( page < this.minPage ) {
+				page = this.minPage;
+			} else if ( page > this.maxPage ) {
+				page = this.maxPage;
+			}
+			
+			this.page = page;
+			
+			this.updateRenderers();
+			
+		},
+		addButton: function( buttonId, action, renderer ) {
+			
+			let elt = this.container.querySelector( "span[data-pagid='" + buttonId + "']" );
+			
+			if ( elt === null )
+				throw "Invalid button identifier '" + buttonId + "', not found in container";
+			
+			let button = this.buttons[ buttonId ] = {
+				system: this,
+				element: elt,
+				action: null,
+				renderer: renderer,
+				setAction: function( action ) {
+					
+					if ( this.action !== null ) {
+						this.element.removeEventListener( 'click', JSH.pagination.buttonClickedListener );
+					}
+					
+					if ( typeof action === "function" ) {
+						
+						this.action = action;
+						this.element.addEventListener( 'click', JSH.pagination.buttonClickedListener );
+						
+					} else if ( action !== null )
+						throw "Invalid action, must be null or function";
+					
+				},
+				updateRenderer: function() {
+					
+					let ret = this.renderer( this.system );
+					
+					if ( ret.disabled ) this.element.classList.add("disabled");
+					else this.element.classList.remove("disabled");
+					
+					this.element.jsh_pag_disabled = ret.disabled;
+					
+					if ( ret.text !== undefined )
+						this.element.textContent = ret.text;
+					
+				},
+				setRenderer: function( renderer ) {
+					
+					this.renderer = renderer;
+					this.updateRenderer();
+					
+				}
+			};
+
+			button.setAction( action );
+			
+			elt.jsh_pag_system = this;
+			elt.jsh_pag_button = button;
+			elt.jsh_pag_disabled = false;
+			
+			return button;
+			
+		},
+		addFirstButton: function( buttonId ) {
+			return this.addButton( buttonId, ( sys ) => 0, ( sys ) => {
+				return {
+					disabled: ( sys.page === 0 ),
+					text: "1"
+				};
+			} );
+		},
+		addLastButton: function( buttonId ) {
+			return this.addButton( buttonId, ( sys ) => sys.maxPage, ( sys ) => {
+				return {
+					disabled: ( sys.page === sys.maxPage ),
+					text: ( sys.maxPage + 1 ).toString()
+				};
+			} );
+		},
+		addCurrentPageButton: function( buttonId ) {
+			return this.addButton( buttonId, null, ( sys ) => {
+				return {
+					disabled: true,
+					text: ( sys.page + 1 ).toString()
+				};
+			} );
+		},
+		addPreviousButton: function( buttonId ) {
+			return this.addButton( buttonId, ( sys ) => sys.page - 1, ( sys ) => {
+				return {
+					disabled: ( sys.page === 0 )
+				};
+			} );
+		},
+		addNextButton: function( buttonId ) {
+			return this.addButton( buttonId, ( sys ) => sys.page + 1, ( sys ) => {
+				return {
+					disabled: ( sys.page === sys.maxPage )
+				};
+			} );
+		}
+	};
+	
+	return system;
+	
+};
+
+JSH.pagination.buttonClickedListener = function() {
+	
+	if ( this.jsh_pag_disabled ) return;
+	
+	let page = this.jsh_pag_button.action( this.jsh_pag_system );
+	
+	if ( this.jsh_pag_system.triggerListeners( page ) ) {
+		this.jsh_pag_system.setPage( page );
+	}
+	
+};
+
+JSH.table = {};
+
+JSH.table.build = function( tableContainerSelector, items, constructors, descructors ) {
+	
+	let container = document.querySelector( tableContainerSelector );
+	
+	if ( container === null || typeof container !== "object" || [ "TABLE", "THEAD", "TBODY", "TFOOT" ].indexOf( container.tagName ) === -1 )
+		throw "Invalid selected element";
+	
+	if ( !Array.isArray( items ) )
+		throw "Invalid items array";
+	
+	if ( !Array.isArray( constructors ) )
+		throw "Constructors must be an array";
+	
+	if ( typeof descructor !== "object" ) descructor = {};
+	
+	let itemsCount = items.length;
+	
+	let childRows = container.querySelectorAll("tr");
+	let childRowsCount = childRows.length;
+	
+	let rowElt;
+	
+	let rowChildCells;
+	let rowChildCell;
+	let rowChildCellId;
+	
+	let constructor;
+	let destructor;
+	
+	let i = 0
+	
+	for ( ; i < Math.max( itemsCount, childRowsCount ); i++ ) {
+		
+		if ( i < childRowsCount ) {
+			
+			rowElt = childRows[ i ];
+			rowChildCells = rowElt.querySelectorAll("td");
+			
+			for ( let j = 0; j < rowChildCells.length; j++ ) {
+				
+				rowChildCell = rowChildCells[ j ];
+				rowChildCellId = rowChildCell.jsh_id;
+				
+				if ( rowChildCellId !== undefined ) {
+					
+					destructor = descructors[ rowChildCellId ];
+					
+					if ( destructor !== undefined )
+						destructor( rowChildCell );
+					
+				}
+				
+				rowElt.removeChild( rowChildCell );
+				
+			}
+			
+		} else {
+			rowElt = null;
+		}
+		
+		if ( i < itemsCount ) {
+			
+			if ( rowElt === null ) {
+				
+				rowElt = document.createElement("tr");
+				container.appendChild( rowElt );
+				
+			}
+			
+			let cells = {};
+			
+			$.each( constructors, function( idx, constructor ) {
+				
+				if ( typeof constructor.id !== "string" || typeof constructor.func !== "function" )
+					return;
+				
+				let cell = document.createElement("td");
+				rowElt.appendChild( cell );
+				cell.jsh_id = constructor.id;
+				
+				cells[ constructor.id ] = cell;
+				
+				constructor.func( cell, items[i], cells );
+				
+			} );
+			
+		} else if ( rowElt !== null ) {
+			container.removeChild( rowElt );
+		}
+		
+	}
+	
+	for ( ; i < childRowsCount; i++ ) {
+		
+		
+		
+	}
+	
 };
 
 // Query
