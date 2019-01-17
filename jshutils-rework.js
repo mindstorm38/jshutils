@@ -10,9 +10,6 @@
  * 
  */
 
-if ( !Boolean( $ ) )
-	throw "JSH Utilities modules needs jQuery to work. Load it first.";
-
 // Polyfill for old browers
 
 if ( !String.prototype.format ) {
@@ -283,11 +280,69 @@ const Utils = (function(){
 	
 }());
 
+const Keys = (function(){
+	
+	const KEYS = {
+		"Enter": 13,
+		"Backspace": 18,
+		"Escape": 27,
+		"Shift": 16,
+		" ": 32,
+		"Control": 17,
+		"Tab": 9,
+		"CapsLock": 20,
+		"NumLock": 144,
+		"AltGraph": 18,
+		"Delete": 46,
+		"Insert": 45
+	};
+	
+	function getKeyCode( keyName ) {
+		return KEYS[ keyName ];
+	}
+	
+	function isEventKey( e, keyName, keyCode ) {
+		
+		if ( e.key == keyName )
+			return true;
+		
+		if ( keyCode == null )
+			keyCode = getKeyCode( keyName );
+		
+		return ( e.keyCode == keyCode || e.which == keyCode );
+		
+	}
+	
+	return {
+		KEYS: KEYS,
+		getKeyCode: getKeyCode,
+		isEventKey: isEventKey
+	}
+	
+}());
+
 const Query = (function(){
+	
+	const ERROR_ATTR = "error";
+	const DATA_ATTR = "data";
+	const MESSAGE_ATTR = "message";
+	const JSON_RESP_TYPE = "json";
 	
 	let path = "/query/{0}";
 	
+	function newHttpRequest() {
+		
+		if ( window.XMLHttpRequest ) {
+			return new XMLHttpRequest();
+		} else {
+			return new ActiveXObject("Microsoft.XMLHTTP");
+		}
+		
+	}
+	
 	function post( name, params, fn ) {
+		
+		Utils.checkParamType( fn, "function", "The callback" );
 		
 		let queryPath = path.format( name );
 
@@ -298,42 +353,61 @@ const Query = (function(){
 			if ( typeof val === "boolean" ) val = val ? "1" : "0";
 			formdata.append( key, val );
 		}
-
-		$.ajax( {
-			type: "POST",
-			xhr: function() {
-
-				let xhr = new XMLHttpRequest();
-
-				return xhr;
-
-			},
-			url: queryPath,
-			data: formdata,
-			processData: false,
-			contentType: false,
-			dataType: 'json',
-			success: function( data ) {
-
-				if ( typeof fn === "function" )
-					fn( data.error, data.data, data.message );
-
-			},
-			error: function( xhr, status, error ) {
-
-				console.error("Query failed :");
-				console.error( error );
-
+		
+		let xhr = newHttpRequest();
+		
+		if ( xhr.responseType != null )
+			xhr.responseType = JSON_RESP_TYPE;
+		
+		xhr.onerror = function( e ) {
+			
+			console.error("Query XHR error :");
+			console.error( error );
+			
+			fn( "XHR_ERROR", {}, xhr.statusText );
+			
+		};
+		
+		xhr.onload = function( e ) {
+			
+			if ( xhr.status === 200 ) {
+				
+				let data;
+				
+				if ( xhr.responseType === JSON_RESP_TYPE && typeof xhr.response == "object" ) {
+					data = xhr.response;
+				} else {
+					
+					try {
+						data = JSON.parse( xhr.response );
+					} catch ( e ) {
+						data = null;
+					}
+					
+				}
+				
+				if ( data == null ) {
+					fn( "XHR_INVALID_JSON", {}, "Invalid JSON data received." );
+				} else {
+					fn( data["error"], data["data"], data["message"] );
+				}
+				
 			}
-		} );
+			
+		};
+		
+		xhr.open( 'POST', queryPath, true );
+		xhr.setRequestHeader( "Accept", "application/json" );
+		xhr.send( formdata );
 		
 	}
 	
-	function setPath( newPath ) {
-		path = newPath;
+	function setPath( _path ) {
+		path = Utils.checkParamType( _path, "string", "Query path" );
 	}
 	
 	return {
+		newHttpRequest: newHttpRequest,
 		post: post,
 		setPath: setPath
 	}
@@ -348,7 +422,8 @@ const Lang = (function(){
 		
 		let raw = content[ key ];
 		if ( raw === undefined ) return key;
-		return raw.format( vars );
+		
+		return raw.format.apply( raw, vars );
 		
 	}
 	
@@ -364,54 +439,6 @@ const Lang = (function(){
 }());
 
 const Event = (function(){
-	
-	/*
-	const timeouts = {};
-	
-	function newTimeoutId() {
-		
-		let id;
-		
-		do {
-			
-			id = Utils.randomInt();
-			
-		} while ( id in timeouts );
-		
-		return id;
-		
-	}
-	
-	function timeShiftedEvent( event, delay ) {
-		
-		let id = newTimeoutId();
-		
-		if ( typeof delay !== 'number' )
-			delay = 300;
-		
-		return function() {
-			
-			if ( timeouts[ id ] !== undefined ) {
-				
-				clearTimeout( timeouts[ id ] );
-				delete timeouts[ id ];
-				
-			}
-			
-			let args = arguments;
-			let self = this;
-			
-			timeouts[ id ] = setTimeout( () => {
-				
-				delete timeouts[ id ];
-				event.apply( self, args );
-				
-			}, delay );
-				
-		};
-		
-	}
-	*/
 	
 	function TimeoutSystem() {
 		
@@ -1059,9 +1086,11 @@ const Form = (function(){
 			};
 			
 			formData.fieldEnterEvent = function( e ) {
-				if ( e.key === "Enter" || e.keyCode === 13 || e.which === 13 ) {
-					if ( this.valid ) this.submitAction();
+				
+				if ( this.valid && Keys.isEventKey( e, "Enter" ) ) {
+					this.submitAction();
 				}
+				
 			}.bind( formData );
 			
 		}
