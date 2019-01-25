@@ -414,6 +414,154 @@ const Query = (function(){
 	
 }());
 
+const WebSocketHelper = (function(){
+	
+	const DEFAULT_STATE_CHECK = 5000;
+	
+	function AutoWebSocket(address, stateCheck) {
+		
+		const self = this;
+		
+		this.address = address;
+		this.ws = null;
+		this.ready = false;
+		
+		this.messageListeners = [];
+		this.readyListeners = [];
+		
+		this.buildWebSocket();
+		
+		if ( stateCheck !== false ) {
+			
+			if ( typeof stateCheck !== "number" || stateCheck < 0 )
+				stateCheck = DEFAULT_STATE_CHECK;
+			
+			setInterval( function() {
+				self.checkState();
+			}, stateCheck );
+			
+		}
+		
+	}
+	
+	AutoWebSocket.prototype.buildWebSocket = function() {
+		
+		this.ws = new WebSocket( this.address );
+		this.ready = false;
+		
+		const self = this;
+		
+		this.ws.onopen = function( e ) {
+			self.wsOnOpen( e );
+		};
+		
+		this.ws.onerror = function( e ) {
+			self.wsOnError( e );
+		};
+		
+		this.ws.onmessage = function( e ) {
+			self.wsOnMessage( e );
+		};
+		
+	};
+	
+	AutoWebSocket.prototype.wsOnOpen = function( e ) {
+		
+		if ( this.ws != null ) {
+			
+			console.log( "WebSocket connection established at '" + this.address + "'." );
+			this.ready = true;
+			
+			Utils.each( this.readyListeners, function( listener ) {
+				listener( e );
+			} );
+			
+		}
+		
+	};
+	
+	AutoWebSocket.prototype.wsOnError = function( e ) {
+		
+		if ( this.ws != null ) {
+			this.close();
+		}
+		
+	};
+	
+	AutoWebSocket.prototype.wsOnMessage = function( e ) {
+		
+		if ( this.ws != null ) {
+			
+			data = JSON.parse( e.data );
+			
+			if ( data == null ) {
+				return;
+			}
+			
+			Utils.each( this.messageListeners, function( listener ) {
+				listener( data, e );
+			} );
+			
+		}
+		
+	};
+	
+	AutoWebSocket.prototype.usable = function() {
+		return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+	}
+	
+	AutoWebSocket.prototype.checkState = function() {
+		
+		if ( this.ready && this.ws !== null ) {
+			
+			if ( !this.usable() ) {
+				
+				console.log("Connection lost.. Closing.");
+				this.close();
+				
+			}
+		}
+		
+		if ( this.ws == null ) {
+			this.buildWebSocket();
+		}
+		
+	};
+	
+	AutoWebSocket.prototype.close = function() {
+		
+		if ( this.usable() )
+			this.ws.close();
+		
+		this.ws = null;
+		this.ready = false;
+		
+	};
+	
+	AutoWebSocket.prototype.onMessage = function( listener ) {
+		this.messageListeners.push( listener );
+	};
+	
+	AutoWebSocket.prototype.onReady = function( listener ) {
+		this.readyListeners.push( listener );
+	};
+	
+	AutoWebSocket.prototype.send = function( data ) {
+		
+		if ( !this.usable() )
+			return;
+		
+		data = JSON.stringify( data );
+		this.ws.send( data );
+		
+	};
+	
+	return {
+		AutoWebSocket: AutoWebSocket
+	};
+	
+}());
+
 const Lang = (function(){
 	
 	let content = {};
