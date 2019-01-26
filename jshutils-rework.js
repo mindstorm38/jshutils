@@ -1411,7 +1411,7 @@ const Form = (function(){
 		let checkers = fieldData.checkers;
 		
 		if ( index == null ) {
-			checker.push( checker );
+			checkers.push( checker );
 		} else {
 			
 			if ( index < 0 || index > checkers.length )
@@ -1479,7 +1479,7 @@ const Form = (function(){
 			let fieldCheckers = fieldData.checkers;
 			
 			let fieldElement = fieldData.element;
-			let fieldValue = getElementValue( fieldElement );
+			let fieldValue = getFieldValue( fieldElement );
 			
 			Utils.each( fieldCheckers, function( checker ) {
 				
@@ -1596,7 +1596,7 @@ const Form = (function(){
 			
 			let referenceField = getField( form, this.referencePasswordField );
 			
-			return val === getElementValue( referenceField ) ? false : "invalid_confirm_password";
+			return val === getFieldValue( referenceField ) ? false : "invalid_confirm_password";
 			
 		}.bind( { referencePasswordField: referencePasswordField } ), [ referencePasswordField ] );
 		
