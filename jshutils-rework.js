@@ -255,6 +255,38 @@ const Utils = (function(){
 		
 	}
 	
+	function setCookie(name, value, expireSeconds, path) {
+		
+		if ( typeof path !== "string" )
+			path = "/";
+		
+		let d = new Date( expireSeconds * 1000 );
+		document.cookie = name + "=" + value + ";expires=" + d.toUTCString() + ";path=" + path;
+		
+	}
+	
+	function getCookie(name) {
+		
+		name += "=";
+		let ca = document.cookie.split(";");
+		
+		let c;
+		for ( let i = 0; i < ca.length; i++ ) {
+			
+			c = ca[i];
+			
+			while( c.charAt(0) == ' ' )
+				c = c.substring(1);
+			
+			if ( c.indexOf( name ) == 0 )
+				return c.substring(name.length, c.length);
+			
+		}
+		
+		return null;
+		
+	}
+	
 	return {
 		checkParamType: checkParamType,
 		checkNumberInteger: checkNumberInteger,
@@ -275,7 +307,9 @@ const Utils = (function(){
 		urlGetParam: urlGetParam,
 		urlRemoveParam: urlRemoveParam,
 		urlSetParam: urlSetParam,
-		each: each
+		each: each,
+		setCookie: setCookie,
+		getCookie: getCookie
 	};
 	
 }());
@@ -326,7 +360,9 @@ const Query = (function(){
 	const ERROR_ATTR = "error";
 	const DATA_ATTR = "data";
 	const MESSAGE_ATTR = "message";
+	
 	const JSON_RESP_TYPE = "json";
+	const TEXT_RESP_TYPE = "text";
 	
 	let path = "/query/{0}";
 	
@@ -340,37 +376,77 @@ const Query = (function(){
 		
 	}
 	
-	function post( name, params, fn ) {
+	function postRaw( url, params, opened, onerror, onload ) {
 		
-		Utils.checkParamType( fn, "function", "The callback" );
-		
-		let queryPath = path.format( name );
-
-		let formdata = new FormData();
-		let val;
-		for ( let key in params ) {
-			val = params[ key ];
-			if ( typeof val === "boolean" ) val = val ? "1" : "0";
-			formdata.append( key, val );
-		}
+		Utils.checkParamType( name, "string", "The url" );
 		
 		let xhr = newHttpRequest();
 		
-		if ( xhr.responseType != null )
-			xhr.responseType = JSON_RESP_TYPE;
-		
 		xhr.onerror = function( e ) {
 			
-			console.error("Query XHR error :");
+			console.error("XHR Post error :");
 			console.error( error );
 			
-			fn( "XHR_ERROR", {}, xhr.statusText );
+			if ( typeof onerror === "function" )
+				onerror( xhr, e );
 			
 		};
 		
 		xhr.onload = function( e ) {
 			
-			if ( xhr.status === 200 ) {
+			if ( typeof onload === "function" )
+				onload( xhr, xhr.status, e );
+			
+		};
+		
+		xhr.open( 'POST', url, true );
+		
+		if ( typeof opened === "function" )
+			opened( xhr );
+		
+		if ( typeof params === "object" ) {
+			
+			const formdata = new FormData();
+			
+			let val;
+			
+			for ( let key in params ) {
+				
+				val = params[ key ];
+				
+				if ( typeof val === "boolean" )
+					val = val ? "1" : "0";
+				
+				formdata.append( key, val );
+				
+			}
+			
+			xhr.send( formdata );
+			
+		} else {
+			xhr.send();
+		}
+		
+	}
+	
+	function postJson( url, fn ) {
+		
+		Utils.checkParamType( fn, "function", "The callback" );
+		
+		postRaw( url, params, function( xhr ) {
+			
+			if ( xhr.responseType != null )
+				xhr.responseType = JSON_RESP_TYPE;
+			
+			xhr.setRequestHeader( "Accept", "application/json" );
+			
+		}, function( xhr, e ) {
+			
+			fn( "XHR_ERROR", {}, xhr.statusText );
+			
+		}, function( xhr, status, e ) {
+			
+			if ( status === 200 ) {
 				
 				let data;
 				
@@ -392,14 +468,35 @@ const Query = (function(){
 					fn( data["error"], data["data"], data["message"] );
 				}
 				
+			} else {
+				fn( "XHR_NOT_OK_STATUS", {}, "Response status is not OK." );
 			}
 			
-		};
+		} );
 		
-		xhr.open( 'POST', queryPath, true );
-		xhr.setRequestHeader( "Accept", "application/json" );
-		xhr.send( formdata );
+	}
+	
+	function postText( url, params, fn ) {
 		
+		Utils.checkParamType( fn, "function", "The callback" );
+		
+		postRaw( url, params, function( xhr ) {
+			
+			if ( xhr.responseType != null )
+				xhr.responseType = TEXT_RESP_TYPE;
+			
+			xhr.setRequestHeader( "Accept", "text/plain" );
+			
+		}, function( xhr, e ) {
+			fn( null, xhr.statusText );
+		}, function( xhr, status, e ) {
+			fn( status === 200 ? xhr.response : null, xhr.statusText );
+		} );
+		
+	}
+	
+	function post( name, params, fn ) {
+		postJson( path.format( name ), params, fn );
 	}
 	
 	function setPath( _path ) {
@@ -408,6 +505,9 @@ const Query = (function(){
 	
 	return {
 		newHttpRequest: newHttpRequest,
+		postRaw: postRaw,
+		postJson: postJson,
+		postText: postText,
 		post: post,
 		setPath: setPath
 	}
@@ -425,6 +525,8 @@ const WebSocketHelper = (function(){
 		this.address = address;
 		this.ws = null;
 		this.ready = false;
+		
+		this.pendingSends = [];
 		
 		this.messageListeners = [];
 		this.readyListeners = [];
@@ -471,6 +573,14 @@ const WebSocketHelper = (function(){
 			
 			console.log( "WebSocket connection established at '" + this.address + "'." );
 			this.ready = true;
+			
+			const self = this;
+			
+			Utils.each( this.pendingSends, function( data ) {
+				self._send( data );
+			} );
+			
+			this.pendingSends = [];
 			
 			Utils.each( this.readyListeners, function( listener ) {
 				listener( e );
@@ -548,8 +658,18 @@ const WebSocketHelper = (function(){
 	
 	AutoWebSocket.prototype.send = function( data ) {
 		
-		if ( !this.usable() )
+		if ( !this.usable() ) {
+			
+			this.pendingSends.push( data );
 			return;
+			
+		}
+		
+		this._send( data );
+		
+	};
+	
+	AutoWebSocket.prototype._send = function( data ) {
 		
 		data = JSON.stringify( data );
 		this.ws.send( data );
@@ -1411,7 +1531,7 @@ const Form = (function(){
 		let checkers = fieldData.checkers;
 		
 		if ( index == null ) {
-			checker.push( checker );
+			checkers.push( checker );
 		} else {
 			
 			if ( index < 0 || index > checkers.length )
@@ -1479,7 +1599,7 @@ const Form = (function(){
 			let fieldCheckers = fieldData.checkers;
 			
 			let fieldElement = fieldData.element;
-			let fieldValue = getElementValue( fieldElement );
+			let fieldValue = getFieldValue( fieldElement );
 			
 			Utils.each( fieldCheckers, function( checker ) {
 				
@@ -1596,7 +1716,7 @@ const Form = (function(){
 			
 			let referenceField = getField( form, this.referencePasswordField );
 			
-			return val === getElementValue( referenceField ) ? false : "invalid_confirm_password";
+			return val === getFieldValue( referenceField ) ? false : "invalid_confirm_password";
 			
 		}.bind( { referencePasswordField: referencePasswordField } ), [ referencePasswordField ] );
 		
