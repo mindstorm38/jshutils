@@ -3,7 +3,8 @@
  *  |  Javascript HTML Utilities  |
  *  +-----------------------------+
  *  
- *  By Mindstorm38 at :
+ *  By Théo Rozier (Mindstorm38) at :
+ *   - https://theorozier.fr
  *   - https://github.com/mindstorm38/jshutils
  *   - https://github.com/mindstorm38
  *   - https://twitter.com/Mindstorm38
@@ -287,6 +288,24 @@ const Utils = (function(){
 		
 	}
 	
+	function createElement( tag, classList ) {
+		
+		const doc = document.createElement( checkParamType( tag, "string", "Element tag type" ) );
+		
+		if ( Array.isArray( classList ) ) {
+			
+			Utils.each( classList, function( cl ) {
+				doc.classList.add( cl );
+			} );
+			
+		} else if ( classList != null ) {
+			doc.classList.add( classList );
+		}
+		
+		return doc;
+		
+	}
+	
 	return {
 		checkParamType: checkParamType,
 		checkNumberInteger: checkNumberInteger,
@@ -309,7 +328,8 @@ const Utils = (function(){
 		urlSetParam: urlSetParam,
 		each: each,
 		setCookie: setCookie,
-		getCookie: getCookie
+		getCookie: getCookie,
+		createElement: createElement
 	};
 	
 }());
@@ -429,7 +449,7 @@ const Query = (function(){
 		
 	}
 	
-	function postJson( url, fn ) {
+	function postJson( url, params, fn ) {
 		
 		Utils.checkParamType( fn, "function", "The callback" );
 		
@@ -706,7 +726,7 @@ const Lang = (function(){
 	
 }());
 
-const Event = (function(){
+const EventUtils = (function(){
 	
 	function TimeoutSystem() {
 		
@@ -760,12 +780,15 @@ const Event = (function(){
 	
 	const internal = newTimeoutSystem();
 	
-	function timeoutEvent( event, delay ) {
+	function timeoutEvent( event, delay, ret ) {
 		
-		let id = internal.newTimeoutId();
+		const id = internal.newTimeoutId();
 		
 		return function() {
+			
 			internal.triggerEvent( id, event, this, arguments, delay );
+			return ret;
+			
 		};
 		
 	}
@@ -1335,7 +1358,7 @@ const Form = (function(){
 	}
 	
 	function postFormQuery( form, queryName, fn ) {
-		Query.post( queryName, collectForm( form ), fn );
+		Query.post( queryName, getFormValues( form ), fn );
 	}
 	
 	function getFormData( form ) {
@@ -1508,7 +1531,7 @@ const Form = (function(){
 		
 		if ( Array.isArray( checker.subfields ) ) {
 			
-			let fieldSubfields = fieldData.subfields;
+			const fieldSubfields = fieldData.subfields;
 			
 			Utils.each( checker.subfields, function( subfield ) {
 				
@@ -1528,7 +1551,7 @@ const Form = (function(){
 			
 		}
 		
-		let checkers = fieldData.checkers;
+		const checkers = fieldData.checkers;
 		
 		if ( index == null ) {
 			checkers.push( checker );
@@ -1591,15 +1614,15 @@ const Form = (function(){
 		if ( formData == null )
 			return;
 		
-		let formFields = formData.fields;
+		const formFields = formData.fields;
 		
 		function fieldCheck( fieldName, fieldData ) {
 			
-			fieldData.valid = false;
-			let fieldCheckers = fieldData.checkers;
+			const fieldCheckers = fieldData.checkers;
+			fieldData.valid = true;
 			
-			let fieldElement = fieldData.element;
-			let fieldValue = getFieldValue( fieldElement );
+			const fieldElement = fieldData.element;
+			const fieldValue = getFieldValue( fieldElement );
 			
 			Utils.each( fieldCheckers, function( checker ) {
 				
@@ -1613,7 +1636,7 @@ const Form = (function(){
 				
 			} );
 			
-			// TODO : Vérifier s'il n'y a pas moyen de rendre plus universel ceci :
+			// Pour ne pas invalider visuellement le champs s'il est vide (pour éviter de surcharger la page).
 			const valid = ( typeof fieldValue === "string" && fieldValue.length === 0 ) || fieldData.valid;
 			fieldElement.classList.toggle( "invalid", !valid );
 			
@@ -1722,7 +1745,50 @@ const Form = (function(){
 		
 	}
 	
+	// Registering Standard defaults fields handlers.
+
+	registerFieldHandler( "std-input", function( field ) {
+		
+		if ( field.tagName !== "INPUT" )
+			return null;
+		
+		const CHECKABLE_TYPES = [ "checkbox", "radio" ];
+		return CHECKABLE_TYPES.indexOf( field.type ) === -1 ? field.value : field.checked;
+		
+	} );
+
+	registerFieldHandler( "std-textarea", function( field ) {
+		return field.tagName === "TEXTAREA" ? field.value : null;
+	} );
+
+	registerFieldHandler( "std-select", function( field ) {
+		
+		if ( field.tagName !== "SELECT" )
+			return null;
+		
+		if ( field.multiple ) {
+			
+			let vals = [];
+			let options = field.options;
+			let opt;
+			
+			for ( let i = 0; i < options.length; i++ ) {
+				
+				opt = options[ i ]
+				
+				if ( opt.selected )
+					val.push( opt.value );
+				
+			}
+			
+			return vals;
+			
+		} else return field.value;
+		
+	} );
+	
 	return {
+		forms: forms,
 		registerFieldHandler: registerFieldHandler,
 		getFormValues: getFormValues,
 		postFormQuery: postFormQuery,
@@ -1742,49 +1808,8 @@ const Form = (function(){
 		VALID_EMAIL_CHECKER: validEmailChecker,
 		NOT_EMPTY_CHECKER: notEmptyChecker,
 		createRegexChecker: createRegexChecker,
-		createLengthChecker: createLengthChecker
+		createLengthChecker: createLengthChecker,
+		createConfirmPasswordChecker: createConfirmPasswordChecker
 	};
 	
 }());
-
-// Registering Standard defaults fields handlers.
-
-Form.registerFieldHandler( "std-input", function( field ) {
-	
-	if ( field.tagName !== "INPUT" )
-		return null;
-	
-	const CHECKABLE_TYPES = [ "checkbox", "radio" ];
-	return CHECKABLE_TYPES.indexOf( field.type ) === -1 ? field.value : field.checked;
-	
-} );
-
-Form.registerFieldHandler( "std-textarea", function( field ) {
-	return field.tagName === "TEXTAREA" ? field.value : null;
-} );
-
-Form.registerFieldHandler( "std-select", function( field ) {
-	
-	if ( field.tagName !== "SELECT" )
-		return null;
-	
-	if ( field.multiple ) {
-		
-		let vals = [];
-		let options = field.options;
-		let opt;
-		
-		for ( let i = 0; i < options.length; i++ ) {
-			
-			opt = options[ i ]
-			
-			if ( opt.selected )
-				val.push( opt.value );
-			
-		}
-		
-		return vals;
-		
-	} else return field.value;
-	
-} );
