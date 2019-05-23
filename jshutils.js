@@ -305,6 +305,10 @@ const Utils = (function(){
 		return doc;
 		
 	}
+
+	function ready( cb ) {
+		document.addEventListener( "DOMContentLoaded", cb );
+	}
 	
 	return {
 		checkParamType: checkParamType,
@@ -329,7 +333,8 @@ const Utils = (function(){
 		each: each,
 		setCookie: setCookie,
 		getCookie: getCookie,
-		createElement: createElement
+		createElement: createElement,
+		ready: ready
 	};
 	
 }());
