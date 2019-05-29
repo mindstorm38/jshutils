@@ -382,14 +382,18 @@ const Keys = (function(){
 
 const Query = (function(){
 	
-	const ERROR_ATTR = "error";
-	const DATA_ATTR = "data";
-	const MESSAGE_ATTR = "message";
-	
 	const JSON_RESP_TYPE = "json";
 	const TEXT_RESP_TYPE = "text";
 	
+	const keys = {
+		ERROR_ATTR: "error",
+		DATA_ATTR: "data",
+		MESSAGE_ATTR: "message",
+		NONCE_PARAM: "$nonce$"
+	};
+
 	let path = "/query/{0}";
+	let nonce = null;
 	
 	function newHttpRequest() {
 		
@@ -490,7 +494,7 @@ const Query = (function(){
 				if ( data == null ) {
 					fn( "XHR_INVALID_JSON", {}, "Invalid JSON data received." );
 				} else {
-					fn( data["error"], data["data"], data["message"] );
+					fn( data[ keys.ERROR_ATTR ], data[ keys.DATA_ATTR ], data[ keys.MESSAGE_ATTR ] );
 				}
 				
 			} else {
@@ -520,12 +524,27 @@ const Query = (function(){
 		
 	}
 	
-	function post( name, params, fn ) {
+	function post( name, params, fn, useNonce ) {
+
+		if ( useNonce == null || useNonce === true ) {
+
+			if ( nonce == null )
+				console.warning("Using nonce for posting JSON request, but no nonce were given.");
+
+			params[ keys.NONCE_PARAM ] = nonce;
+			
+		}
+
 		postJson( path.format( name ), params, fn );
+
 	}
 	
 	function setPath( _path ) {
 		path = Utils.checkParamType( _path, "string", "Query path" );
+	}
+
+	function setNonce( _nonce ) {
+		nonce = Utils.checkParamType( _nonce, "string", "Query nonce" );
 	}
 	
 	return {
@@ -533,8 +552,10 @@ const Query = (function(){
 		postRaw: postRaw,
 		postJson: postJson,
 		postText: postText,
+		keys: keys,
 		post: post,
-		setPath: setPath
+		setPath: setPath,
+		setNonce: setNonce
 	}
 	
 }());
